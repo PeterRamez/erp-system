@@ -50,3 +50,11 @@ All appointment, operation, visit, and finance date/time fields now use the shar
 - Finance screen includes a clear `Register income / expense` action and daily, weekly, and monthly financial reports with period navigation and print.
 - Admin-only user creation remains enforced by the server route. New users can be assigned per-user module permissions within their selected role.
 - Operation form now accepts free-text opening doctor names and stores them in `operations.opening_doctor_names`. Migration `0006_opening_doctor_names.sql` adds this column.
+
+## تحديثات التقويم والعمليات
+
+بعد التحديث، نفّذ Migration الجديد من Supabase SQL Editor:
+`supabase/migrations/0008_date_based_staff_schedule.sql`
+
+التحديث يضيف تاريخًا محددًا لجداول تواجد الأطباء والفريق مع الاحتفاظ بالتوافر الأسبوعي القديم.
+تمت إزالة Dashboard الطبيب وسجل الزيارات من القائمة التشغيلية، وإضافة تقاويم شهرية للمواعيد والعمليات وتواجد الفريق، وخانة البحث عن المرضى، وسعر خدمة قابل للتعديل، وتصنيف الصور الطبية والروشتات، وإمكانية تسجيل دفعات إضافية للعمليات وربطها بالحسابات.

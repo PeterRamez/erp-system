@@ -22,7 +22,7 @@ export async function POST(req:Request){
  if(adminProfile.active!==true||normalizedRole!=='admin')return NextResponse.json({error:'This signed-in account is not recognized as an active admin.',diagnostic:{role:adminProfile.role,active:adminProfile.active}},{status:403});
  const body=await req.json();const role=body.role;
  if(!['admin','reception','doctor','hair_team','finance'].includes(role))return NextResponse.json({error:'Invalid role.'},{status:400});
- const roleModules:Record<string,string[]>={reception:['home','appointments','patients','operations','visits','staff'],doctor:['home','doctor','patients','visits'],hair_team:['home','doctor','patients','operations','staff'],finance:['home','finance','reports'],admin:['home','doctor','patients','appointments','operations','visits','staff','finance','reports']};
+ const roleModules:Record<string,string[]>={reception:['home','appointments','patients','operations','staff'],doctor:['home','patients'],hair_team:['home','patients','operations','staff'],finance:['home','finance','reports'],admin:['home','patients','appointments','operations','staff','finance','reports']};
  const permissions=body.permissions&&typeof body.permissions==='object'?body.permissions:{};
  const modules=Array.isArray(permissions.modules)?permissions.modules:roleModules[role];
  if(!Array.isArray(modules)||modules.some((m:string)=>!roleModules[role].includes(m)))return NextResponse.json({error:'Invalid module permission for selected role.'},{status:400});
