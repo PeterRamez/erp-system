@@ -11,15 +11,15 @@ insert into public.user_branch_access(user_id,organization_id,branch_id)
 select p.id,p.organization_id,p.branch_id from public.profiles p where p.branch_id is not null
 on conflict(user_id,branch_id) do nothing;
 
-create or replace function private.can_access_branch(org uuid, branch uuid)
+create or replace function private.can_access_branch(org uuid, br uuid)
 returns boolean language sql stable security definer set search_path='' as $$
  select exists(
    select 1 from public.profiles p
    where p.id=(select auth.uid()) and p.organization_id=org and p.active
    and (p.role='admin' or exists(
       select 1 from public.user_branch_access uba
-      where uba.user_id=p.id and uba.organization_id=org and uba.branch_id=branch
-   ) or p.branch_id=branch)
+      where uba.user_id=p.id and uba.organization_id=org and uba.branch_id=br
+   ) or p.branch_id=br)
  );
 $$;
 create or replace function private.has_module_access(org uuid, module_name text)
