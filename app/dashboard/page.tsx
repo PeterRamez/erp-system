@@ -82,7 +82,8 @@ export default function Dashboard(){
  async function addOperationPayment(e:any){
   e.preventDefault(); if(branchId==='__all__'){setError('اختار فرعًا محددًا قبل تسجيل دفعة.');return;}if(!supabase||!org||!branchId||!form.operation_id)return;
   const op=rows.find(x=>x.id===form.operation_id)||selectedPatient;
-  const paid=Number(op?.deposit_amount||0), total=Number(op?.total_amount||0), amount=Number(form.amount||0);
+  if(!op){setError('العملية غير موجودة، اختار عملية صحيحة قبل تسجيل الدفعة.');return;}
+  const paid=Number(op.deposit_amount||0), total=Number(op.total_amount||0), amount=Number(form.amount||0);
   if(amount<=0||paid+amount>total){setError('الدفعة يجب أن تكون أكبر من صفر ولا تتجاوز المتبقي.');return;}
   setBusy(true);
   const tx=await supabase.from('financial_transactions').insert({organization_id:org,branch_id:branchId,direction:'income',description:`دفعة عملية زراعة - ${patients.find(p=>p.id===op.patient_id)?.full_name||'مريض'}`,amount,payment_method:form.payment_method||'cash',patient_id:op.patient_id,operation_id:op.id,created_by:profile.id}).select('*').single();
