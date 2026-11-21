@@ -58,3 +58,21 @@ All appointment, operation, visit, and finance date/time fields now use the shar
 
 التحديث يضيف تاريخًا محددًا لجداول تواجد الأطباء والفريق مع الاحتفاظ بالتوافر الأسبوعي القديم.
 تمت إزالة Dashboard الطبيب وسجل الزيارات من القائمة التشغيلية، وإضافة تقاويم شهرية للمواعيد والعمليات وتواجد الفريق، وخانة البحث عن المرضى، وسعر خدمة قابل للتعديل، وتصنيف الصور الطبية والروشتات، وإمكانية تسجيل دفعات إضافية للعمليات وربطها بالحسابات.
+
+
+## Update 0009 — Multi-branch access, permissions, and live collaboration
+
+Apply `supabase/migrations/0009_multi_branch_realtime_permissions.sql` after the existing migrations. This update:
+
+- Adds `user_branch_access` so a user may be assigned to Cairo, Mansoura, or both.
+- Backfills existing profile primary branches into branch membership records.
+- Updates branch-access checks to recognize branch memberships.
+- Adds restrictive database module-permission gates so a module hidden in the UI is also blocked by RLS.
+- Enables Realtime publication for clinic workflow tables where the `supabase_realtime` publication exists.
+- Adds multi-branch selection to user creation and user permissions editing.
+- Allows Admin to choose **All branches** and see combined branch records; rows show branch labels in combined views.
+- Adds live refresh subscriptions for clinic records so authorized users see updates without manually refreshing.
+
+Users can work simultaneously from separate devices/browser sessions. Supabase Auth session storage is browser-specific; using different accounts in the same browser profile will replace the active account session, so use separate browser profiles/incognito sessions for separate simultaneous logins.
+
+Apply the migration in Supabase SQL Editor or through your established migration workflow before deploying the updated app. Realtime must be enabled in the project for the publication changes to take effect.

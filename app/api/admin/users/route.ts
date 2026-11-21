@@ -26,14 +26,15 @@ export async function POST(req:Request){
  const permissions=body.permissions&&typeof body.permissions==='object'?body.permissions:{};
  const modules=Array.isArray(permissions.modules)?permissions.modules:roleModules[role];
  if(!Array.isArray(modules)||modules.some((m:string)=>!roleModules[role].includes(m)))return NextResponse.json({error:'Invalid module permission for selected role.'},{status:400});
- if(!body.full_name||!body.email||!body.password||String(body.password).length<8||!body.branch_id)return NextResponse.json({error:'Name, email, password (8+ chars), and branch are required.'},{status:400});
- const {data:branch,error:branchErr}=await admin.from('branches').select('id,organization_id').eq('id',body.branch_id).single();
- if(branchErr||branch?.organization_id!==adminProfile.organization_id)return NextResponse.json({error:'Invalid branch.'},{status:400});
+ const branchIds=Array.isArray(body.branch_ids)?Array.from(new Set(body.branch_ids.map((x:any)=>String(x)))):body.branch_id?[String(body.branch_id)]:[];if(!body.full_name||!body.email||!body.password||String(body.password).length<8||branchIds.length===0)return NextResponse.json({error:'Name, email, password (8+ chars), and at least one branch are required.'},{status:400});
+ const {data:branchRows,error:branchErr}=await admin.from('branches').select('id,organization_id').in('id',branchIds);
+ if(branchErr||!branchRows||branchRows.length!==branchIds.length||branchRows.some((b:any)=>b.organization_id!==adminProfile.organization_id))return NextResponse.json({error:'Invalid branch selection.'},{status:400});const primaryBranch=branchRows.find((b:any)=>b.id===String(body.branch_id||branchIds[0]))||branchRows[0];
  const {data:created,error:createErr}=await admin.auth.admin.createUser({email:body.email,password:body.password,email_confirm:true});
  if(createErr||!created.user)return NextResponse.json({error:createErr?.message||'Could not create auth user.'},{status:400});
- const {error:insertErr}=await admin.from('profiles').insert({id:created.user.id,organization_id:adminProfile.organization_id,branch_id:branch.id,full_name:String(body.full_name),role,active:true,permissions:{...permissions,modules}});
+ const {error:insertErr}=await admin.from('profiles').insert({id:created.user.id,organization_id:adminProfile.organization_id,branch_id:primaryBranch.id,full_name:String(body.full_name),role,active:true,permissions:{...permissions,modules}});
  if(insertErr){await admin.auth.admin.deleteUser(created.user.id);return NextResponse.json({error:insertErr.message},{status:400});}
- return NextResponse.json({user_id:created.user.id,full_name:body.full_name,role,branch_id:branch.id});
+ const {error:membershipErr}=await admin.from('user_branch_access').insert(branchRows.map((b:any)=>({user_id:created.user.id,organization_id:adminProfile.organization_id,branch_id:b.id})));if(membershipErr){await admin.auth.admin.deleteUser(created.user.id);return NextResponse.json({error:'Could not save branch access: '+membershipErr.message},{status:400});}
+ return NextResponse.json({user_id:created.user.id,full_name:body.full_name,role,branch_id:primaryBranch.id,branch_ids:branchRows.map((b:any)=>b.id)});
 }
 
 export async function DELETE(req:Request){
