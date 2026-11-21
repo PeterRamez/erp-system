@@ -83,7 +83,7 @@ do $$
 declare t text;
 begin
  if exists(select 1 from pg_publication where pubname='supabase_realtime') then
-  foreach t in array['patients','appointments','operations','financial_transactions','profiles','user_branch_access','staff_schedules','visits','patient_images','operation_labs','appointment_private_details','patient_private_details','operation_team_assignments','operation_private_details'] loop
+  foreach t in array ARRAY['patients','appointments','operations','financial_transactions','profiles','user_branch_access','staff_schedules','visits','patient_images','operation_labs','appointment_private_details','patient_private_details','operation_team_assignments','operation_private_details'] loop
    if not exists(select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename=t) then
     execute format('alter publication supabase_realtime add table public.%I',t);
    end if;
