@@ -76,3 +76,19 @@ Apply `supabase/migrations/0009_multi_branch_realtime_permissions.sql` after the
 Users can work simultaneously from separate devices/browser sessions. Supabase Auth session storage is browser-specific; using different accounts in the same browser profile will replace the active account session, so use separate browser profiles/incognito sessions for separate simultaneous logins.
 
 Apply the migration in Supabase SQL Editor or through your established migration workflow before deploying the updated app. Realtime must be enabled in the project for the publication changes to take effect.
+
+## Patient File Structure Upgrade (Nov 22, 2026)
+
+The patient detail modal now has a structured multi-tab patient file:
+- Overview with patient summary, visit/appointment/operation/file counts, and admin contact details where the existing role rules allow.
+- Clinical history with visit entries including complaint, diagnosis, examination, treatment plan, prescription, and notes.
+- Appointment history for the patient.
+- Hair operation history with scheduled date, total/deposit/balance, graft estimate, implant doctor, and notes.
+- Finance history for Admin and Finance roles only.
+- Medical images and prescription image uploads, using the existing private storage and watermark upload flow.
+
+A new visit form writes clinical visit records to the existing `visits` table. This update does not require a new SQL migration.
+
+
+## Important verification note
+The live Demo reference was reviewed at its public routes, but its full client-side internals were not available for code-level extraction. This package adds a production-data patient-file structure based on the existing schema and visible Demo section structure; it is **not certified as a pixel-perfect or feature-for-feature clone of every hidden Demo interaction**. npm dependency installation timed out in the build environment, so a full Next.js build could not be run here. Install dependencies locally and run `npm run build` before deploying.
