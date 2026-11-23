@@ -92,3 +92,11 @@ A new visit form writes clinical visit records to the existing `visits` table. T
 
 ## Important verification note
 The live Demo reference was reviewed at its public routes, but its full client-side internals were not available for code-level extraction. This package adds a production-data patient-file structure based on the existing schema and visible Demo section structure; it is **not certified as a pixel-perfect or feature-for-feature clone of every hidden Demo interaction**. npm dependency installation timed out in the build environment, so a full Next.js build could not be run here. Install dependencies locally and run `npm run build` before deploying.
+
+## Updates in this delivery
+- Admin user management now supports listing user email addresses and editing a user's name, email, role, active status, branch access, and resetting their password.
+- The staff/doctors navigation entry is removed. Doctor accounts are limited to their own hair-transplant operations by matching their profile name with the operation's implant doctor name.
+- Financial transactions support an expense category field and an expense-entry modal with amount, description, category, payment method, and date.
+
+### Required Supabase migration
+Before deploying this update, run `supabase/migrations/0010_doctor_dashboard_expense_categories.sql` in the Supabase SQL editor. It adds the expense category column and applies the doctor-specific operations SELECT policy. Keep the `SUPABASE_SERVICE_ROLE_KEY` configured for admin user management endpoints.

@@ -22,7 +22,7 @@ export async function POST(req:Request){
  if(adminProfile.active!==true||normalizedRole!=='admin')return NextResponse.json({error:'This signed-in account is not recognized as an active admin.',diagnostic:{role:adminProfile.role,active:adminProfile.active}},{status:403});
  const body=await req.json();const role=body.role;
  if(!['admin','reception','doctor','hair_team','finance'].includes(role))return NextResponse.json({error:'Invalid role.'},{status:400});
- const roleModules:Record<string,string[]>={reception:['home','appointments','patients','operations','staff'],doctor:['home','patients'],hair_team:['home','patients','operations','staff'],finance:['home','finance','reports'],admin:['home','patients','appointments','operations','staff','finance','reports']};
+ const roleModules:Record<string,string[]>={reception:['home','appointments','patients','operations','staff'],doctor:['home','operations'],hair_team:['home','patients','operations','staff'],finance:['home','finance','reports'],admin:['home','patients','appointments','operations','staff','finance','reports']};
  const permissions=body.permissions&&typeof body.permissions==='object'?body.permissions:{};
  const modules=Array.isArray(permissions.modules)?permissions.modules:roleModules[role];
  if(!Array.isArray(modules)||modules.some((m:string)=>!roleModules[role].includes(m)))return NextResponse.json({error:'Invalid module permission for selected role.'},{status:400});
@@ -62,4 +62,29 @@ export async function DELETE(req:Request){
  const {error:deleteErr}=await admin.auth.admin.deleteUser(targetId);
  if(deleteErr)return NextResponse.json({error:'تعذر حذف حساب الدخول. تأكد من تطبيق migration حذف المستخدمين. التفاصيل: '+deleteErr.message},{status:409});
  return NextResponse.json({success:true,deleted_user_id:targetId});
+}
+
+async function verifyAdmin(req:Request){
+ if(!url||!anon||!service)return {error:NextResponse.json({error:'Server Supabase credentials are not configured.'},{status:503})};
+ const token=req.headers.get('authorization')?.replace(/^Bearer\s+/i,'');if(!token)return {error:NextResponse.json({error:'Authentication required.'},{status:401})};
+ const userClient=createClient(url,anon,{auth:{persistSession:false}});const {data:{user},error:userErr}=await userClient.auth.getUser(token);if(userErr||!user)return {error:NextResponse.json({error:'Invalid session.'},{status:401})};
+ const admin=createClient(url,service,{auth:{persistSession:false,autoRefreshToken:false}});const {data:profile,error}=await admin.from('profiles').select('id,organization_id,role,active').eq('id',user.id).maybeSingle();if(error||!profile||profile.active!==true||profile.role!=='admin')return {error:NextResponse.json({error:'Admin access required.'},{status:403})};return {admin,profile,user};
+}
+export async function GET(req:Request){
+ const v=await verifyAdmin(req);if(v.error)return v.error;const {admin,profile}=v as any;
+ const {data:users,error}=await admin.from('profiles').select('*').eq('organization_id',profile.organization_id).order('created_at',{ascending:false});if(error)return NextResponse.json({error:error.message},{status:500});
+ const result=[];for(const u of users||[]){const {data:auth}=await admin.auth.admin.getUserById(u.id);const {data:access}=await admin.from('user_branch_access').select('branch_id').eq('user_id',u.id);result.push({...u,email:auth.user?.email||'',branch_ids:(access||[]).map((x:any)=>x.branch_id)});}
+ return NextResponse.json({users:result});
+}
+export async function PUT(req:Request){
+ const v=await verifyAdmin(req);if(v.error)return v.error;const {admin,profile,user}=v as any;let body:any;try{body=await req.json()}catch{return NextResponse.json({error:'Invalid request body.'},{status:400})}
+ const id=String(body.user_id||'');if(!id)return NextResponse.json({error:'User ID required.'},{status:400});const {data:target,error:targetErr}=await admin.from('profiles').select('id,organization_id,role').eq('id',id).maybeSingle();if(targetErr||!target)return NextResponse.json({error:'User not found.'},{status:404});if(target.organization_id!==profile.organization_id)return NextResponse.json({error:'Organization mismatch.'},{status:403});
+ const updateAuth:any={};if(body.email)updateAuth.email=String(body.email).trim();if(body.password){if(String(body.password).length<8)return NextResponse.json({error:'Password must be at least 8 characters.'},{status:400});updateAuth.password=String(body.password)}
+ if(Object.keys(updateAuth).length){const {error}=await admin.auth.admin.updateUserById(id,updateAuth);if(error)return NextResponse.json({error:error.message},{status:400})}
+ const role=body.role||target.role;if(!['admin','reception','doctor','hair_team','finance'].includes(role))return NextResponse.json({error:'Invalid role.'},{status:400});
+ const branchIds=Array.isArray(body.branch_ids)?Array.from(new Set(body.branch_ids.map((x:any)=>String(x)))):[];if(!branchIds.length)return NextResponse.json({error:'Select at least one branch.'},{status:400});
+ const {data:branches,error:branchError}=await admin.from('branches').select('id,organization_id').in('id',branchIds);if(branchError||!branches||branches.length!==branchIds.length||branches.some((b:any)=>b.organization_id!==profile.organization_id))return NextResponse.json({error:'Invalid branch selection.'},{status:400});
+ const roleModules:any={admin:['home','patients','appointments','operations','finance','reports'],reception:['home','appointments','patients','operations'],doctor:['home','operations'],hair_team:['home','patients','operations'],finance:['home','finance','reports']};const perms=body.permissions&&typeof body.permissions==='object'?body.permissions:{};const modules=Array.isArray(perms.modules)?perms.modules:roleModules[role];if(modules.some((m:string)=>!roleModules[role].includes(m)))return NextResponse.json({error:'Invalid module permissions.'},{status:400});
+ const {error:profileUpdate}=await admin.from('profiles').update({full_name:String(body.full_name||''),role,branch_id:branchIds[0],active:body.active!==false,permissions:{...perms,modules}}).eq('id',id);if(profileUpdate)return NextResponse.json({error:profileUpdate.message},{status:400});
+ await admin.from('user_branch_access').delete().eq('user_id',id);const {error:membershipError}=await admin.from('user_branch_access').insert(branchIds.map(branch_id=>({user_id:id,organization_id:profile.organization_id,branch_id})));if(membershipError)return NextResponse.json({error:membershipError.message},{status:400});return NextResponse.json({success:true,user_id:id});
 }
