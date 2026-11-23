@@ -43,3 +43,104 @@
 /* Patient-file structure upgrade */
 .patient-file-modal{width:min(980px,100%)}.patient-file{gap:13px}.patient-profile-header{display:flex;justify-content:space-between;align-items:center;gap:12px;background:#f6f8f2;border:1px solid var(--line);border-radius:12px;padding:14px}.patient-profile-header h3{font-size:19px;margin:0 0 4px}.patient-profile-header small{color:var(--muted)}.patient-profile-actions{display:flex;gap:7px;flex-wrap:wrap}.patient-tabs{display:flex;gap:5px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:8px}.patient-tabs button{border:1px solid var(--line);background:#fff;color:var(--muted);border-radius:8px;padding:8px 12px}.patient-tabs button.active{background:var(--olive);border-color:var(--olive);color:#fff}.patient-info-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.patient-info-grid>div{background:#fff;border:1px solid var(--line);border-radius:9px;padding:12px}.patient-info-grid small{display:block;color:var(--muted);font-size:11px;margin-bottom:4px}.patient-info-grid b{font-size:17px;color:var(--olive)}.patient-tab-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.patient-record-card{border:1px solid var(--line);border-radius:10px;background:#fff;padding:13px;margin:9px 0;line-height:1.8}.patient-record-card p{margin:4px 0}.patient-record-card b{color:var(--olive)}@media(max-width:680px){.patient-profile-header{align-items:flex-start;flex-direction:column}.patient-info-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.patient-profile-actions{width:100%}.patient-profile-actions button{flex:1}}
 .dashboard-shortcuts{margin-bottom:16px}.shortcut-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.shortcut-grid button{border:1px solid var(--line);background:#fafbf8;border-radius:10px;padding:13px;text-align:right;display:flex;align-items:center;gap:9px;color:var(--ink)}.shortcut-grid button:hover{border-color:#a8b18e;background:#f3f5ee}.shortcut-grid button span{font-size:19px;color:var(--olive2)}.shortcut-grid button b{font-size:12px}.shortcut-grid button small{margin-right:auto;color:var(--muted);font-size:10px}@media(max-width:680px){.shortcut-grid{grid-template-columns:1fr 1fr}.shortcut-grid button{flex-wrap:wrap}}
+
+/* Reference UI refresh: clean clinic dashboard, teal accents, white sidebar */
+:root{--bg:#f3f6fb;--panel:#fff;--ink:#152b4b;--muted:#6d84a6;--olive:#007f78;--olive2:#00877f;--accent:#b9f1e9;--line:#e0e8f2;--shadow:0 2px 5px rgba(25,55,95,.08),0 1px 2px rgba(25,55,95,.06)}
+html,body{background:var(--bg);color:#173253;font-family:'Cairo',Tahoma,Arial,sans-serif}
+.app-shell{background:#f3f6fb}
+.side{width:250px;background:#fff;color:#1a3456;border-left:1px solid #e2eaf3;border-right:0;padding:18px 14px;box-shadow:none}
+.logo-block{border-bottom:1px solid #eef2f7;padding:5px 4px 19px;gap:12px}
+.logo-block img{width:46px;height:46px;border-radius:50%;background:#00877f;object-fit:cover}
+.logo-block strong{font-size:14px;letter-spacing:.2px;color:#122b4a;font-weight:800}
+.logo-block small{color:#7c92af;font-size:10px}
+.nav-caption{color:#8da3bf;margin:24px 10px 11px;font-size:10px}
+.side nav{gap:6px}
+.side nav button{color:#355476;border-radius:13px;padding:12px 13px;gap:12px;font-weight:600;min-height:44px}
+.side nav button:hover,.side nav button.selected{background:#effbf9;color:#007f78}
+.nav-icon{width:25px;color:#496587;font-size:18px}
+.side nav button.selected .nav-icon{color:#00877f}
+.sidebar-bottom{margin-top:auto;border:0;background:#111a2e;color:#d8e3f3;border-radius:18px;padding:17px 15px;margin-bottom:24px;line-height:2;font-size:11px}
+.sidebar-bottom span{color:#46d6c7}
+.workspace{background:#f3f6fb;min-height:100vh}
+.topbar{height:72px;padding:0 28px;background:#fff;border-bottom:1px solid #e0e8f2;color:#7790b0}
+.userbar{gap:10px}.branch-pill{background:#fff8e9;color:#c36c1b;border-radius:22px;padding:7px 12px}.user-dot{background:#ccf7ef;color:#00877f;width:36px;height:36px}
+.page-area{padding:28px 32px;max-width:1700px}
+.heading-row{margin-bottom:22px;align-items:center}
+.heading-row h1{font-size:27px;color:#173454;font-weight:800;margin-bottom:4px}
+.heading-row p{color:#7e96b5;font-size:12px}
+.add-btn{background:#00877f;color:white;border-radius:11px;padding:11px 17px;font-weight:700;box-shadow:0 2px 5px rgba(0,135,127,.14)}
+.add-btn:hover{background:#00776f}
+.overview-grid{gap:16px;margin-bottom:24px}
+.stat-card,.white-card{background:#fff;border:1px solid #e0e8f2;border-radius:17px;box-shadow:var(--shadow);padding:19px}
+.stat-card{min-height:132px;position:relative;display:flex;flex-direction:column;justify-content:center;padding-right:75px}
+.stat-card:before{content:'✚';position:absolute;right:18px;top:20px;width:45px;height:45px;border-radius:13px;background:#effbf9;color:#00877f;display:grid;place-items:center;font-size:18px;font-weight:700}
+.stat-label{color:#7590b1;font-size:12px}
+.stat-value{font-size:27px;color:#152f50;margin:8px 0;font-weight:800}
+.stat-foot{font-size:10px;color:#91a6c0}
+.dashboard-grid{gap:18px}
+.white-card h2{color:#163454;font-weight:800;font-size:16px;margin-bottom:17px}
+.dashboard-shortcuts{margin-bottom:18px}
+.shortcut-grid{gap:12px}
+.shortcut-grid button,.module-grid button{background:#fff;border:1px solid #e3ebf4;border-radius:13px;padding:15px;color:#193655;transition:.16s;min-height:72px}
+.shortcut-grid button:hover,.module-grid button:hover{border-color:#9adfd5;background:#f5fcfb;transform:translateY(-1px)}
+.shortcut-grid button span,.module-grid button span{color:#00877f;background:#effbf9;border-radius:11px;padding:8px;font-size:19px}
+.shortcut-grid button b,.module-grid button b{color:#1a3556;font-size:12px}
+.shortcut-grid button small,.module-grid button small{color:#8097b5;font-size:10px}
+.toolbar{padding:16px 18px;background:#fff;min-height:74px}
+.toolbar input{border:1px solid #dce6f2;background:#f8fafc;border-radius:12px;padding:12px 14px;color:#1c3554;width:min(390px,75%)}
+.table-wrap{max-height:calc(100vh - 240px)}
+table{white-space:nowrap}
+th,td{padding:15px 16px;font-size:12px;border-bottom:1px solid #edf2f8;color:#1a3555}
+th{background:#f8fafc;color:#6783a6;font-weight:700}
+tr:hover td{background:#f8fcff}
+.row-action{border:1px solid #dce7f2;background:#fff;padding:7px 12px;border-radius:9px;color:#007f78;font-weight:600}
+.row-action:hover{background:#effbf9;border-color:#a8e4dc}
+.modal{border-radius:18px;border:1px solid #e2eaf3}
+.modal input,.modal textarea,.modal select{border-color:#dfe8f2;border-radius:10px}
+.modal input:focus,.modal textarea:focus{border-color:#80d4c9;box-shadow:0 0 0 3px #e7f8f5}
+.patient-profile-header{background:#f6f9fd;border-color:#e0e8f2;border-radius:14px}
+.patient-tabs button{border-color:#e0e8f2;color:#6884a6;border-radius:10px}
+.patient-tabs button.active{background:#00877f;border-color:#00877f;color:#fff}
+.patient-info-grid>div,.patient-record-card,.private-box{border-color:#e0e8f2;border-radius:12px;background:#fff}
+.patient-info-grid b,.patient-record-card b{color:#173454}
+.empty{color:#8198b5}
+.live-status{color:#00877f!important;background:#effbf9}
+@media(max-width:1100px){.side{width:225px}.page-area{padding:22px}}
+@media(max-width:680px){.side{width:58px;padding:11px 5px}.page-area{padding:12px}.heading-row h1{font-size:19px}.stat-card{padding:12px 58px 12px 12px}.stat-card:before{right:10px;top:12px;width:38px;height:38px}.side nav button{justify-content:center;padding:11px 4px}.topbar{padding:0 10px}}
+/* Operations page: align monthly calendar and records table with supplied references */
+.operations-calendar-ref{padding:20px 22px;border-radius:17px;border-color:#e0e8f2;background:#fff;box-shadow:0 3px 10px rgba(20,45,80,.035)}
+.operations-calendar-ref .calendar-head{justify-content:flex-start;gap:12px;margin-bottom:18px}
+.operations-calendar-ref .calendar-head b{color:#173555;font-size:15px;min-width:130px}
+.operations-calendar-ref .calendar-head .row-action{border:1px solid #dce6f2;border-radius:9px;min-height:36px;padding:7px 12px;color:#193755;background:#fff}
+.operations-calendar-ref .month-grid{gap:6px}
+.operations-calendar-ref .month-weekdays span{background:transparent;color:#7c95b5;font-weight:500;border-radius:0;padding:10px 3px}
+.operations-calendar-ref .month-day{min-height:110px;border-color:#e5edf5;border-radius:12px;padding:10px;color:#183655;align-items:flex-end;gap:6px}
+.operations-calendar-ref .month-day>span{font-weight:700}
+.operations-calendar-ref .month-day>small{background:transparent;color:#7e97b5;padding:0;align-self:flex-end;font-size:10px}
+.operations-calendar-ref .month-day.selected-day{background:#fff;border:2px solid #00a99d;color:#173555}
+.operations-calendar-ref .month-day.selected-day>span{background:#00877f;color:white;border-radius:50%;width:24px;height:24px;display:grid;place-items:center}
+.operations-calendar-ref .selected-day-row{margin-top:18px;padding:15px;background:#f7f9fc;border:1px solid #e7edf5;border-radius:12px}
+.operations-calendar-ref .selected-day-row b{color:#183655;font-size:13px}
+.operations-calendar-ref .selected-day-appointments{gap:9px}
+.operations-calendar-ref .calendar-event{background:#fff;border-color:#e5edf5;border-radius:10px;padding:12px}
+.operations-table-ref{border-radius:16px;border-color:#e0e8f2;overflow:hidden}
+.operations-table-ref .operation-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:16px 18px 0}
+.operations-table-ref .operation-metrics>div{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid #e0e8f2;border-radius:14px;background:#fff;padding:14px 17px;color:#7891b1;font-size:11px}
+.operations-table-ref .operation-metrics b{color:#183655;font-size:20px}
+.operations-table-ref .toolbar{padding:16px 18px;min-height:74px}
+.operations-table-ref th{background:#f8fafc;color:#7891b2;font-size:10px}
+.operations-table-ref td{height:62px;color:#173555}
+.operations-table-ref tbody tr:nth-child(even) td{background:#f8fafc}
+@media(max-width:650px){.operations-table-ref .operation-metrics{grid-template-columns:1fr}.operations-calendar-ref .month-day{min-height:56px;padding:5px}.operations-calendar-ref .month-day small{font-size:8px}}
+/* Appointment calendar reference styling */
+.appointments-calendar-ref{padding:22px 22px 18px;margin-bottom:18px;background:#fff;border:1px solid #e0e9f3;border-radius:18px}
+.appointments-calendar-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:18px}
+.appointments-calendar-title{display:flex;flex-direction:column;gap:5px}.appointments-calendar-title h2{margin:0;color:#173755;font-size:18px}.appointments-calendar-title small{color:#7890ae;font-size:11px}
+.appointments-calendar-ref .calendar-head{justify-content:flex-start;margin:0;gap:9px}.appointments-calendar-ref .calendar-head b{min-width:120px;color:#173755;font-size:16px}.appointments-calendar-ref .calendar-head .row-action{min-width:38px;min-height:36px;border:1px solid #d9e4f0;border-radius:10px;background:#fff;color:#173755}
+.appointments-calendar-stats{display:flex;flex-wrap:wrap;gap:9px;margin:0 0 18px}.appointments-calendar-stats span{background:#f2f7fb;border-radius:18px;padding:8px 12px;color:#58728f;font-size:11px}.appointments-calendar-stats span:first-child{background:#effbf8;color:#00877f}.appointments-calendar-stats span:last-child{background:#fff8e8;color:#a46b00}
+.appointments-calendar-ref .month-grid{gap:7px}.appointments-calendar-ref .month-weekdays span{background:transparent;color:#7890ae;font-size:10px;font-weight:500;padding:9px 2px}.appointments-calendar-ref .appointments-month-day{min-height:112px;border:1px solid #e5edf5;border-radius:13px;padding:10px;background:#fff;color:#173755;align-items:flex-end;gap:5px}.appointments-calendar-ref .appointments-month-day>span{font-weight:700;font-size:12px}.appointments-calendar-ref .appointments-month-day>small{background:transparent;color:#7791ad;padding:0;align-self:flex-end;font-size:10px}.appointments-calendar-ref .appointments-month-day em{font-style:normal;background:#effbf8;color:#007f77;border-radius:5px;padding:4px 5px;font-size:9px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;align-self:stretch;text-align:right}.appointments-calendar-ref .appointments-month-day i{font-style:normal;color:#7890ae;font-size:9px}.appointments-calendar-ref .appointments-month-day.selected-day{border:2px solid #00a99d;background:#fff}.appointments-calendar-ref .appointments-month-day.selected-day>span{display:grid;place-items:center;width:23px;height:23px;border-radius:50%;background:#00877f;color:white}.appointments-selected-day{margin-top:18px;padding:15px;background:#f7f9fc;border:1px solid #e6edf5;border-radius:12px}.appointments-selected-day>div{display:grid;gap:5px}.appointments-selected-day b{font-size:13px;color:#173755}.appointments-selected-day small{font-size:10px;color:#7890ae}.appointments-selected-day .add-btn{border:1px solid #bdeee7;background:white;color:#00877f;box-shadow:none}.appointments-selected-events{margin-top:10px;grid-template-columns:repeat(3,minmax(0,1fr))}.appointments-selected-events .calendar-event{background:white;border-color:#e6edf5}
+.appointment-branch-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:18px}.appointment-branch-stats>div{background:#fff;border:1px solid #e0e9f3;border-radius:14px;padding:15px;display:flex;align-items:center;justify-content:space-between;gap:8px}.appointment-branch-stats span{font-size:11px;color:#7890ae}.appointment-branch-stats b{font-size:20px;color:#173755}.appointments-table-ref{border:1px solid #e0e9f3;border-radius:16px;overflow:hidden}.appointments-table-ref .toolbar{padding:15px 18px}.appointments-table-ref table thead{background:#f7f9fc}.appointments-table-ref table th{font-size:10px;color:#6683a4}.appointments-table-ref table td{font-size:11px}.appointment-status-chip{display:inline-block;border-radius:20px;background:#eff6ff;color:#2563eb;padding:5px 9px;font-size:10px}
+@media(max-width:850px){.appointments-calendar-top{flex-direction:column}.appointments-calendar-ref .appointments-month-day{min-height:75px;padding:5px}.appointments-calendar-ref .appointments-month-day em{font-size:8px}.appointment-branch-stats{grid-template-columns:1fr}.appointments-selected-events{grid-template-columns:1fr 1fr}}
+@media(max-width:520px){.appointments-calendar-ref{padding:12px}.appointments-calendar-ref .month-grid{gap:3px}.appointments-calendar-ref .appointments-month-day{min-height:54px;padding:3px;border-radius:7px}.appointments-calendar-ref .appointments-month-day em{display:none}.appointments-calendar-ref .month-weekdays span{font-size:8px}.appointments-selected-events{grid-template-columns:1fr}.appointments-calendar-stats{gap:5px}.appointments-calendar-stats span{font-size:9px;padding:6px 8px}}
+
+.patient-autocomplete{position:relative;width:100%}.patient-autocomplete-results{position:absolute;z-index:80;top:calc(100% + 4px);right:0;left:0;max-height:260px;overflow:auto;background:#fff;border:1px solid #dce5f1;border-radius:12px;box-shadow:0 12px 28px rgba(15,35,70,.14);padding:5px}.patient-autocomplete-results button{display:flex;width:100%;justify-content:space-between;align-items:center;gap:10px;text-align:right;padding:10px;border:0;background:#fff;border-radius:8px;color:#12345b;cursor:pointer}.patient-autocomplete-results button:hover{background:#effaf8}.patient-autocomplete-results small{color:#7890b2;font-size:11px}.patient-autocomplete-results .patient-new-option{color:#007f75;background:#f1fbf9}.patient-no-results{padding:12px;color:#8293ad;text-align:center}.patient-selected-clear{border:0;background:transparent;color:#008579;font-size:11px;padding:5px 0;cursor:pointer}
