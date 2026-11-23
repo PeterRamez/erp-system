@@ -100,3 +100,8 @@ The live Demo reference was reviewed at its public routes, but its full client-s
 
 ### Required Supabase migration
 Before deploying this update, run `supabase/migrations/0010_doctor_dashboard_expense_categories.sql` in the Supabase SQL editor. It adds the expense category column and applies the doctor-specific operations SELECT policy. Keep the `SUPABASE_SERVICE_ROLE_KEY` configured for admin user management endpoints.
+
+
+## Doctor clinical-only access update
+
+See `README_V2_HANDOFF.md` and migration `supabase/migrations/0014_doctor_clinical_read_only.sql`. Apply migration 0014 after 0013. Doctors are read-only for clinical files, operations, visits, labs, and images; operation amounts are masked in the `operations_clinical` view and direct operation-table SELECT is revoked. Admin/Image Manager retain image mutation rights. Test on staging before production.
