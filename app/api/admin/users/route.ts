@@ -62,8 +62,31 @@ const roleModules: Record<string, string[]> = {
     'reports'
   ]
 };
- const permissions=body.permissions&&typeof body.permissions==='object'?body.permissions:{};
- const modules=Array.isArray(permissions.modules)?permissions.modules:roleModules[normalizedRole];
+ 
+const permissions =
+  body.permissions && typeof body.permissions === 'object'
+    ? body.permissions
+    : {};
+
+const modules = Array.isArray(permissions.modules)
+  ? permissions.modules
+  : roleModules[normalizedRole];
+
+if (
+  !Array.isArray(modules) ||
+  modules.some(
+    (m: any) =>
+      typeof m !== 'string' ||
+      !roleModules[normalizedRole].includes(m)
+  )
+) {
+  return NextResponse.json(
+    { error: 'Invalid module permission for selected role.' },
+    { status: 400 }
+  );
+}
+
+
  if(!Array.isArray(modules)||modules.some((m:string)=>!roleModules[role].includes(m)))return NextResponse.json({error:'Invalid module permission for selected role.'},{status:400});
  const branchIds=Array.isArray(body.branch_ids)?Array.from(new Set(body.branch_ids.map((x:any)=>String(x)))):body.branch_id?[String(body.branch_id)]:[];if(!body.full_name||!body.email||!body.password||String(body.password).length<8||branchIds.length===0)return NextResponse.json({error:'Name, email, password (8+ chars), and at least one branch are required.'},{status:400});
  const {data:branchRows,error:branchErr}=await admin.from('branches').select('id,organization_id').in('id',branchIds);
