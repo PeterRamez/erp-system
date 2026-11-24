@@ -159,3 +159,8 @@ tr:hover td{background:#f8fcff}
 .patient-image-list>div{width:100%!important;display:flex!important;flex-direction:column!important;align-items:flex-start!important;gap:6px!important}
 .patient-image-list img{max-width:min(100%,900px)!important;height:auto!important;max-height:80vh!important;object-fit:contain!important;cursor:zoom-in!important}
 }
+/* Hide plus icons in printed reports only */
+.print-report .stat-card::before {
+  content: none !important;
+  display: none !important;
+}
