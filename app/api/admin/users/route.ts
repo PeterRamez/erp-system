@@ -43,8 +43,9 @@ if (
 
 const normalizedRole = role.trim().toLowerCase();
 
+
 const roleModules: Record<string, string[]> = {
-  reception: ['home', 'appointments', 'patients', 'operations', 'staff'],
+  reception: ['home', 'appointments', 'patients', 'operations', 'staff', 'finance'],
   doctor: ['home', 'patient_files', 'operations'],
   hair_team: ['home', 'patients', 'operations', 'staff'],
   image_manager: ['home', 'patients'],
