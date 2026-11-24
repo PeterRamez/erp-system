@@ -18,13 +18,51 @@ export async function POST(req:Request){
  const {data:adminProfile,error:profileErr}=await admin.from('profiles').select('organization_id,role,active').eq('id',user.id).maybeSingle();
  if(profileErr)return NextResponse.json({error:'Could not verify your admin profile.',diagnostic:{code:profileErr.code,message:profileErr.message,hint:profileErr.hint}},{status:403});
  if(!adminProfile)return NextResponse.json({error:'No profile row found for the signed-in account.',diagnostic:'profile_missing'},{status:403});
- const normalizedRole=String(adminProfile.role||'').trim().toLowerCase();
- if(adminProfile.active!==true||normalizedRole!=='admin')return NextResponse.json({error:'This signed-in account is not recognized as an active admin.',diagnostic:{role:adminProfile.role,active:adminProfile.active}},{status:403});
+ const adminRole=String(adminProfile.role||'').trim().toLowerCase();
+ if(adminProfile.active!==true||adminRole!=='admin')return NextResponse.json({error:'This signed-in account is not recognized as an active admin.',diagnostic:{role:adminProfile.role,active:adminProfile.active}},{status:403});
  const body=await req.json();const role=body.role;
- if(!['admin','reception','doctor','hair_team','finance'].includes(role))return NextResponse.json({error:'Invalid role.'},{status:400});
- const roleModules:Record<string,string[]>={reception:['home','appointments','patients','operations','staff'],doctor:['home','operations'],hair_team:['home','patients','operations','staff'],finance:['home','finance','reports'],admin:['home','patients','appointments','operations','staff','finance','reports']};
+ 
+const allowedRoles = [
+  'admin',
+  'reception',
+  'doctor',
+  'hair_team',
+  'image_manager',
+  'finance'
+];
+
+if (
+  typeof role !== 'string' ||
+  !allowedRoles.includes(role.trim().toLowerCase())
+) {
+  return NextResponse.json(
+    { error: 'Invalid role.' },
+    { status: 400 }
+  );
+}
+
+const normalizedRole = role.trim().toLowerCase();
+
+const roleModules: Record<string, string[]> = {
+  reception: ['home', 'appointments', 'patients', 'operations', 'staff'],
+  doctor: ['home', 'patient_files', 'operations'],
+  hair_team: ['home', 'patients', 'operations', 'staff'],
+  image_manager: ['home', 'patients'],
+  finance: ['home', 'finance', 'reports'],
+  admin: [
+    'home',
+    'patients',
+    'patient_files',
+    'appointments',
+    'operations',
+    'staff',
+    'finance',
+    'users',
+    'reports'
+  ]
+};
  const permissions=body.permissions&&typeof body.permissions==='object'?body.permissions:{};
- const modules=Array.isArray(permissions.modules)?permissions.modules:roleModules[role];
+ const modules=Array.isArray(permissions.modules)?permissions.modules:roleModules[normalizedRole];
  if(!Array.isArray(modules)||modules.some((m:string)=>!roleModules[role].includes(m)))return NextResponse.json({error:'Invalid module permission for selected role.'},{status:400});
  const branchIds=Array.isArray(body.branch_ids)?Array.from(new Set(body.branch_ids.map((x:any)=>String(x)))):body.branch_id?[String(body.branch_id)]:[];if(!body.full_name||!body.email||!body.password||String(body.password).length<8||branchIds.length===0)return NextResponse.json({error:'Name, email, password (8+ chars), and at least one branch are required.'},{status:400});
  const {data:branchRows,error:branchErr}=await admin.from('branches').select('id,organization_id').in('id',branchIds);
