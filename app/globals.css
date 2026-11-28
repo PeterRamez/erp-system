@@ -164,3 +164,11 @@ tr:hover td{background:#f8fcff}
   content: none !important;
   display: none !important;
 }
+/* Two-step operation registration */
+.operation-modal{width:min(820px,100%)}
+.operation-step-indicator{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;background:#f5f9fc;border:1px solid #e0e8f2;border-radius:10px;color:#7890ae;font-size:12px}
+.operation-step-indicator b{color:#00877f}
+.operation-step-indicator .active{font-weight:800}
+.operation-summary{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px;background:#effbf9;border:1px solid #cdeee8;border-radius:10px;color:#315c68;font-size:12px}
+.operation-summary b{color:#173755}
+@media(max-width:680px){.operation-modal{width:100%}.operation-summary{align-items:flex-start;flex-direction:column}}
