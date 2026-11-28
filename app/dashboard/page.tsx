@@ -109,18 +109,220 @@ export default function Dashboard(){
  async function saveAppointment(e:any){e.preventDefault();if(branchId==='__all__'){setError('اختار فرعًا محددًا قبل تسجيل موعد.');return;}if(!supabase||!org||!branchId)return;let patient=patients.find(p=>p.id===form.patient_id);if(!patient&&form.patient_id==='__new__'){const duplicate=await findExistingPatient(supabase,{organizationId:org,branchId,fullName:String(form.patient_name||''),phone:form.phone||'',role:profile?.role||'',knownPatients:patients});if(duplicate.error){setError('تعذر التحقق من ملف المريض الموجود: '+duplicate.error.message);return;}patient=duplicate.data||undefined;}const isNew=!patient;const patientName=String(isNew?form.patient_name:patient?.full_name||'').trim();if(!patientName){setError('أدخل اسم المريض أو اختر ملفًا مسجلًا');return;}if(!String(form.phone||'').trim()&&!patient){setError('رقم الهاتف مطلوب قبل حفظ الموعد.');return;}if(!String(form.address||'').trim()&&!patient){setError('عنوان المريض مطلوب قبل حفظ الموعد.');return;}if(!form.scheduled_at){setError('حدد التاريخ والوقت قبل حفظ الموعد.');return;}let s=allServices.find(x=>x.label===form.service)||services[0];if(form.service==='__custom__'){const customName=String(form.custom_service_name||'').trim();const customFee=Number(form.custom_service_fee||0);if(!customName||!Number.isFinite(customFee)||customFee<0){setError('أدخل اسم الخدمة وسعر صحيح.');return;}const savedService=await supabase.from('clinic_services').insert({organization_id:org,branch_id:branchId,name:customName,kind:'custom_service',fee:customFee,created_by:profile.id}).select('*').single();if(savedService.error){setError(savedService.error.message);return;}s={label:customName,kind:'custom_service',fee:customFee};setCustomServices(prev=>[...prev,savedService.data]);}const manual=['بوتكس','تقشير بارد','سكين بوستر'].includes(s.label);const special=['ميزوسربي','بلازما'].includes(s.label);const mode=manual?'manual_price':special?(form.service_mode||'paid'):'paid';const fee=(mode==='operation'||mode==='free')?0:form.service==='__custom__'?Number(form.custom_service_fee||0):Number(form.fee??s.fee??0);if(fee<0){setError('السعر لا يمكن أن يكون سالبًا');return;}setBusy(true);const scheduled=new Date(form.scheduled_at||asLocalInput()).toISOString();const appt={organization_id:org,branch_id:branchId,patient_id:patient?.id||null,patient_name:patientName,age:form.age?Number(form.age):patient?.age||null,kind:s.kind,scheduled_at:scheduled,fee,service_mode:mode,service_name:s.label,service_fee:fee,service_payment_mode:mode,arrival_source:form.arrival_source||null,flow:'booked',notes:form.notes||null,created_by:profile.id,doctor_id:form.doctor_id||null};const a=await supabase.from('appointments').insert(appt).select('*').single();if(a.error){setError(a.error.message);setBusy(false);return;}if(patient&&(profile?.role==='admin'||profile?.role==='reception')){const patientUpdate=await supabase.from('patients').update({date_of_birth:form.date_of_birth||null,age:form.date_of_birth?null:(form.age?Number(form.age):patient.age||null),gender:form.gender||null}).eq('id',patient.id);if(patientUpdate.error){setError('تم حفظ الموعد لكن تعذر تحديث بيانات المريض: '+patientUpdate.error.message);}else{const privateUpdate=await supabase.from('patient_private_details').upsert({patient_id:patient.id,organization_id:org,branch_id:patient.branch_id,phone:form.phone||null,national_id:form.national_id||null,address:form.address||null},{onConflict:'patient_id'});if(privateUpdate.error)setError('تم حفظ الموعد لكن تعذر تحديث بيانات التواصل للمريض: '+privateUpdate.error.message);}}if(form.phone||form.address||form.national_id||form.date_of_birth||form.gender){const pp=await supabase.from('appointment_private_details').insert({appointment_id:a.data.id,phone:form.phone||null,address:form.address||null,national_id:form.national_id||null,date_of_birth:form.date_of_birth||null,gender:form.gender||null});if(pp.error)setError('تم حفظ الموعد لكن لم يتم حفظ رقم الهاتف: '+pp.error.message);}if(fee>0){const paid=await supabase.from('financial_transactions').insert({organization_id:org,branch_id:branchId,direction:'income',description:`رسوم موعد ${s.label} - ${patientName}`,amount:fee,payment_method:form.payment_method||'cash',patient_id:patient?.id||null,appointment_id:a.data.id,created_by:profile.id});if(paid.error)setError('تم حجز الموعد لكن تعذر تسجيل الإيراد: '+paid.error.message);}setModal('');setBusy(false);await refresh();}
  async function changeAppointment(row:Row,flow:string){if(!supabase)return;const allowed:Record<string,string>={booked:'with_doctor',arrived:'with_doctor'};if(allowed[row.flow]!==flow){setError('غير مسموح تخطي مرحلة أو الرجوع إلى مرحلة سابقة.');return;}const data:any={flow,updated_at:new Date().toISOString()};if(flow==='with_doctor'){data.doctor_entered_at=new Date().toISOString();if(!row.patient_id){const priv=await supabase.from('appointment_private_details').select('phone,national_id,address,date_of_birth,gender').eq('appointment_id',row.id).maybeSingle();if(priv.error){setError('تعذر قراءة بيانات التواصل الخاصة بالموعد: '+priv.error.message);return;}const normalize=(v:string)=>String(v||'').trim().toLowerCase().replace(/[\u0640\u064B-\u065F]/g,'').replace(/\s+/g,' ');let existing=(patients||[]).find((p:Row)=>normalize(p.full_name)===normalize(row.patient_name));if(!existing){const exactName=await supabase.from('patients').select('id,full_name,age,branch_id').eq('organization_id',row.organization_id).eq('branch_id',row.branch_id).eq('full_name',row.patient_name).limit(1).maybeSingle();if(exactName.error){setError('تعذر البحث عن ملف مريض مطابق للاسم: '+exactName.error.message);return;}if(exactName.data)existing=exactName.data;}if(!existing&&priv.data?.phone){const match=await supabase.from('patient_private_details').select('patient_id').eq('organization_id',row.organization_id).eq('branch_id',row.branch_id).eq('phone',priv.data.phone).limit(1).maybeSingle();if(match.error){setError('تعذر التحقق من وجود ملف مريض بنفس رقم الهاتف: '+match.error.message);return;}if(match.data?.patient_id){const found=await supabase.from('patients').select('id,full_name,age,branch_id').eq('id',match.data.patient_id).maybeSingle();if(found.error){setError(found.error.message);return;}if(found.data)existing=found.data;}}if(existing){data.patient_id=existing.id;}else{const patient=await supabase.from('patients').insert({organization_id:row.organization_id,branch_id:row.branch_id,full_name:row.patient_name,age:priv.data?.date_of_birth?null:(row.age||null),date_of_birth:priv.data?.date_of_birth||null,gender:priv.data?.gender||null,acquisition_source:row.arrival_source||null,created_by:profile.id}).select('*').single();if(patient.error){setError('تعذر تحويل الموعد إلى ملف مريض: '+patient.error.message);return;}data.patient_id=patient.data.id;}if(priv.data&&(priv.data.phone||priv.data.national_id||priv.data.address)){const existingPrivate=await supabase.from('patient_private_details').select('phone,national_id,address').eq('patient_id',data.patient_id).maybeSingle();if(existingPrivate.error){setError('تعذر قراءة بيانات التواصل الحالية للمريض: '+existingPrivate.error.message);return;}const saved=await supabase.from('patient_private_details').upsert({patient_id:data.patient_id,organization_id:row.organization_id,branch_id:row.branch_id,phone:priv.data.phone||existingPrivate.data?.phone||null,national_id:priv.data.national_id||existingPrivate.data?.national_id||null,address:priv.data.address||existingPrivate.data?.address||null},{onConflict:'patient_id'});if(saved.error){setError('تم ربط الموعد بالمريض لكن تعذر نقل بيانات التواصل: '+saved.error.message);return;}}}}const r=await supabase.from('appointments').update(data).eq('id',row.id).eq('flow',row.flow);if(r.error)setError(r.error.message);else await refresh();}
  async function convertOperation(row:Row){if(!supabase||!org||!branchId)return;if(!row.patient_id||!['with_doctor','completed'].includes(row.flow)){setError('تحويل العمليات متاح بعد دخول المريض عند الدكتور وتسجيله في ملف المرضى.');return;}const p=patients.find(x=>x.id===row.patient_id);if(!p){setError('لازم المريض يكون مسجل في ملف المرضى قبل تحويله لعملية');return;}if(isAdmin&&branchId==='__all__')setBranchId(row.branch_id);const full=await fetchPatientFormData(supabase,p.id,profile?.role||'');if(full.error||!full.data){setError(`تعذر تحميل بيانات المريض قبل التحويل. ${full.error?.message||''}`);return;}setForm({...full.data,patient_id:p.id,patient_name:p.full_name,appointment_id:row.id,scheduled_at:row.scheduled_at,procedure_type:'hair_transplant',total_amount:'',deposit_amount:'0'});setSelectedPatient(row);setOperationStep(1);setModal('operation');}
- async function continueOperation(){
+ 
+async function continueOperation() {
   setError('');
-  const selectedPatientRecord=patients.find((p:Row)=>p.id===form.patient_id);
-  const operationBranchIdForStep=branchId==='__all__'?(selectedPatient?.branch_id||selectedPatientRecord?.branch_id||''):branchId;
-  if(!operationBranchIdForStep){setError('اختار مريضًا تابعًا لفرع محدد أو اختار فرعًا قبل تسجيل العملية.');return;}
-  if(!form.scheduled_at){setError('حدد يوم ووقت العملية.');return;}
-  if(!form.patient_id){setError('اختار المريض أو سجل اسم مريض جديد.');return;}
-  if(form.patient_id==='__new__'&&!String(form.patient_name||'').trim()){setError('اكتب اسم المريض الجديد.');return;}
-  const deposit=Number(form.deposit_amount||0);
-  if(!Number.isFinite(deposit)||deposit<0){setError('أدخل قيمة مقدم صحيحة.');return;}
-  setOperationStep(2);
- }
+
+  if (!supabase || !org || !profile) {
+    setError('جلسة الدخول غير مكتملة.');
+    return;
+  }
+
+  const selectedPatientRecord = patients.find(
+    (p: Row) => p.id === form.patient_id
+  );
+
+  const operationBranchId =
+    branchId === '__all__'
+      ? (selectedPatient?.branch_id || selectedPatientRecord?.branch_id || '')
+      : branchId;
+
+  if (!operationBranchId) {
+    setError('اختار فرعًا محددًا قبل تسجيل العملية.');
+    return;
+  }
+
+  if (!form.scheduled_at) {
+    setError('حدد يوم ووقت العملية.');
+    return;
+  }
+
+  if (!form.patient_id) {
+    setError('اختار المريض أو سجل اسم مريض جديد.');
+    return;
+  }
+
+  if (
+    form.patient_id === '__new__' &&
+    !String(form.patient_name || '').trim()
+  ) {
+    setError('اكتب اسم المريض الجديد.');
+    return;
+  }
+
+  const deposit = Number(form.deposit_amount || 0);
+
+  if (!Number.isFinite(deposit) || deposit < 0) {
+    setError('أدخل قيمة مقدم صحيحة.');
+    return;
+  }
+
+  setBusy(true);
+
+  try {
+    let patient = patients.find(
+      (p: Row) => p.id === form.patient_id
+    );
+
+    // تسجيل ملف المريض إذا كان جديدًا
+    if (form.patient_id === '__new__') {
+      const patientName = String(form.patient_name || '').trim();
+
+      const duplicate = await findExistingPatient(supabase, {
+        organizationId: org,
+        branchId: operationBranchId,
+        fullName: patientName,
+        phone: '',
+        role: profile.role,
+        knownPatients: patients
+      });
+
+      if (duplicate.error) {
+        throw new Error(duplicate.error.message);
+      }
+
+      if (duplicate.data) {
+        patient = duplicate.data;
+      } else {
+        const created = await supabase
+          .from('patients')
+          .insert({
+            organization_id: org,
+            branch_id: operationBranchId,
+            full_name: patientName,
+            created_by: profile.id
+          })
+          .select('*')
+          .single();
+
+        if (created.error) {
+          throw new Error(
+            'تعذر إنشاء ملف المريض: ' + created.error.message
+          );
+        }
+
+        patient = created.data;
+        setPatients(prev => [created.data, ...prev]);
+      }
+    }
+
+    if (!patient) {
+      throw new Error('تعذر تحديد ملف المريض.');
+    }
+
+    const operationPayload = {
+      organization_id: org,
+      branch_id: operationBranchId,
+      patient_id: patient.id,
+      appointment_id: form.appointment_id || null,
+      scheduled_at: new Date(form.scheduled_at).toISOString(),
+      procedure_type: form.procedure_type || 'hair_transplant',
+      total_amount: 0,
+      deposit_amount: deposit,
+      created_by: profile.id
+    };
+
+    let operationId = form.operation_id || null;
+
+    // في حالة التحويل: منع إنشاء عملية مكررة لنفس الموعد
+    if (!operationId && form.appointment_id) {
+      const existing = await supabase
+        .from('operations')
+        .select('id')
+        .eq('appointment_id', form.appointment_id)
+        .maybeSingle();
+
+      if (existing.error) {
+        throw new Error(existing.error.message);
+      }
+
+      operationId = existing.data?.id || null;
+    }
+
+    let operationResult;
+
+    if (operationId) {
+      operationResult = await supabase
+        .from('operations')
+        .update(operationPayload)
+        .eq('id', operationId)
+        .select('id')
+        .single();
+    } else {
+      operationResult = await supabase
+        .from('operations')
+        .insert(operationPayload)
+        .select('id')
+        .single();
+    }
+
+    if (operationResult.error) {
+      throw new Error(
+        'تعذر حفظ بيانات العملية: ' + operationResult.error.message
+      );
+    }
+
+    operationId = operationResult.data.id;
+
+    // تسجيل المقدم كحركة مالية مرتبطة بالعملية
+    if (deposit > 0) {
+      const existingDeposit = await supabase
+        .from('financial_transactions')
+        .select('id')
+        .eq('operation_id', operationId)
+        .eq('direction', 'income')
+        .limit(1)
+        .maybeSingle();
+
+      if (existingDeposit.error) {
+        throw new Error(existingDeposit.error.message);
+      }
+
+      const depositPayload = {
+        organization_id: org,
+        branch_id: operationBranchId,
+        direction: 'income',
+        description: `مقدم عملية زراعة - ${patient.full_name}`,
+        amount: deposit,
+        payment_method: form.deposit_payment_method || 'cash',
+        patient_id: patient.id,
+        operation_id: operationId,
+        created_by: profile.id
+      };
+
+      const financialResult = existingDeposit.data
+        ? await supabase
+            .from('financial_transactions')
+            .update(depositPayload)
+            .eq('id', existingDeposit.data.id)
+        : await supabase
+            .from('financial_transactions')
+            .insert(depositPayload);
+
+      if (financialResult.error) {
+        throw new Error(
+          'تم حفظ العملية لكن تعذر تسجيل المقدم: ' +
+          financialResult.error.message
+        );
+      }
+    }
+
+    setForm(prev => ({
+      ...prev,
+      operation_id: operationId,
+      patient_id: patient!.id,
+      patient_name: patient!.full_name
+    }));
+
+    setOperationStep(2);
+
+  } catch (err: any) {
+    setError(err?.message || 'حدث خطأ أثناء تسجيل العملية.');
+  } finally {
+    setBusy(false);
+  }
+}
+
  async function saveOperation(e:any){
   e.preventDefault();
   
@@ -171,19 +373,100 @@ export default function Dashboard(){
    }
    const operationPayload={organization_id:org,branch_id:operationBranchId,patient_id:patient.id,appointment_id:form.appointment_id||null,scheduled_at:form.scheduled_at?new Date(form.scheduled_at).toISOString():null,procedure_type:form.procedure_type||'hair_transplant',total_amount:total,deposit_amount:deposit,planned_grafts:form.planned_grafts?Number(form.planned_grafts):null,extractor_doctor_id:form.extractor_doctor_id||null,opening_doctor_ids:form.opening_doctor_ids||[],opening_doctor_names:form.opening_doctor_names||null,implant_doctor_name:form.implant_doctor_name||null,chronic_disease:!!form.chronic_disease,chronic_disease_details:form.chronic_disease?form.chronic_disease_details||null:null,transplant_team:form.transplant_team||null,lab_remarks:form.lab_remarks||{},notes:form.notes||null,created_by:profile.id};
    // التحويل من موعد لا ينشئ عملية ثانية إذا سبق إنشاء العملية ثم تعطل جزء تابع لها.
-   let existingOperation:any=null;
-   if(form.appointment_id){
-    const existing=await supabase.from('operations').select('id').eq('appointment_id',form.appointment_id).limit(1).maybeSingle();
-    if(existing.error){setError('تعذر التحقق من وجود عملية مرتبطة بالموعد: '+existing.error.message);return;}
-    existingOperation=existing.data;
-   }
-   const op=existingOperation
-    ? await supabase.from('operations').update(operationPayload).eq('id',existingOperation.id).select('id').single()
-    : await supabase.from('operations').insert(operationPayload).select('id').single();
-   if(op.error){setError('فشل حفظ العملية في جدول operations: '+op.error.message);return;}
-   const operationId=op.data.id;
+   
+let existingOperation: any = null;
+
+// لو العملية اتحفظت بالفعل في الخطوة الأولى
+if (form.operation_id) {
+  const existing = await supabase
+    .from('operations')
+    .select('id')
+    .eq('id', form.operation_id)
+    .maybeSingle();
+
+  if (existing.error) {
+    setError('تعذر التحقق من العملية: ' + existing.error.message);
+    return;
+  }
+
+  existingOperation = existing.data;
+}
+
+// حماية إضافية للتحويل من موعد
+if (!existingOperation && form.appointment_id) {
+  const existing = await supabase
+    .from('operations')
+    .select('id')
+    .eq('appointment_id', form.appointment_id)
+    .maybeSingle();
+
+  if (existing.error) {
+    setError('تعذر التحقق من العملية المرتبطة بالموعد: ' + existing.error.message);
+    return;
+  }
+
+  existingOperation = existing.data;
+}
+
+const op = existingOperation
+  ? await supabase
+      .from('operations')
+      .update(operationPayload)
+      .eq('id', existingOperation.id)
+      .select('id')
+      .single()
+  : await supabase
+      .from('operations')
+      .insert(operationPayload)
+      .select('id')
+      .single();
+
+if (op.error) {
+  setError('فشل حفظ تفاصيل العملية: ' + op.error.message);
+  return;
+}
+
+const operationId = op.data.id;
+
    const warnings=[];
-   if(form.phone||form.national_id){
+   
+if (form.phone) {
+  const privateExisting = await supabase
+    .from('operation_private_details')
+    .select('id')
+    .eq('operation_id', operationId)
+    .limit(1)
+    .maybeSingle();
+
+  if (privateExisting.error) {
+    warnings.push(
+      'قراءة بيانات التواصل: ' + privateExisting.error.message
+    );
+  } else {
+    const privatePayload = {
+      phone: form.phone || null
+    };
+
+    const priv = privateExisting.data
+      ? await supabase
+          .from('operation_private_details')
+          .update(privatePayload)
+          .eq('id', privateExisting.data.id)
+      : await supabase
+          .from('operation_private_details')
+          .insert({
+            operation_id: operationId,
+            organization_id: org,
+            branch_id: operationBranchId,
+            ...privatePayload
+          });
+
+    if (priv.error) {
+      warnings.push('بيانات التواصل: ' + priv.error.message);
+    }
+  }
+}
+
     const privateExisting=await supabase.from('operation_private_details').select('id').eq('operation_id',operationId).limit(1).maybeSingle();
     if(privateExisting.error)warnings.push('قراءة بيانات التواصل: '+privateExisting.error.message);
     else{
@@ -193,7 +476,6 @@ export default function Dashboard(){
       : await supabase.from('operation_private_details').insert({operation_id:operationId,organization_id:org,branch_id:operationBranchId,...privatePayload});
      if(priv.error)warnings.push('بيانات التواصل: '+priv.error.message);
     }
-   }
    if(deposit>0){
     const existingDeposit=await supabase.from('financial_transactions').select('id').eq('operation_id',operationId).eq('direction','income').limit(1).maybeSingle();
     if(existingDeposit.error)warnings.push('التحقق من المقدم المالي: '+existingDeposit.error.message);
@@ -346,14 +628,15 @@ export default function Dashboard(){
  {modal==='finance'&&<form onSubmit={addFinance}><label>نوع الحركة<select value={form.direction||'expense'} onChange={e=>setForm({...form,direction:e.target.value,expense_category:e.target.value==='expense'?(form.expense_category||'other'):null})}><option value='expense'>مصروف</option><option value='income'>إيراد</option></select></label><label>المبلغ<input required type='number' min='0.01' step='0.01' value={form.amount||''} onChange={e=>setForm({...form,amount:e.target.value})}/></label><label className='span2'>السبب / البيان<input required value={form.description||''} onChange={e=>setForm({...form,description:e.target.value})} placeholder='صرفنا الفلوس في إيه؟'/></label>{form.direction==='expense'&&<label>تصنيف المصروف<select value={form.expense_category||'other'} onChange={e=>setForm({...form,expense_category:e.target.value})}><option value='supplies'>مستلزمات</option><option value='salaries'>رواتب</option><option value='operations'>تشغيل</option><option value='maintenance'>صيانة</option><option value='marketing'>تسويق</option><option value='other'>أخرى</option></select></label>}<label>طريقة الدفع<select value={form.payment_method||'cash'} onChange={e=>setForm({...form,payment_method:e.target.value})}>{Object.entries(paymentLabels).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></label><label>التاريخ<input type='datetime-local' value={form.paid_at||asLocalInput()} onChange={e=>setForm({...form,paid_at:e.target.value})}/></label><ModalActions close={()=>setModal('')} busy={busy}/></form>}
  {modal==='patient'&&<form onSubmit={savePatient}><label>الاسم الكامل<input required value={form.full_name||''} onChange={e=>setForm({...form,full_name:e.target.value})}/></label><label>تاريخ الميلاد<input type="date" value={form.date_of_birth||''} onChange={e=>setForm({...form,date_of_birth:e.target.value,age:ageFromDob(e.target.value)})}/></label><label>العمر<input type="number" min="0" max="125" value={form.age||''} onChange={e=>setForm({...form,age:e.target.value})}/></label><label>رقم الهاتف<input value={form.phone||''} onChange={e=>setForm({...form,phone:e.target.value})}/></label><label>الرقم القومي<input value={form.national_id||''} onChange={e=>setForm({...form,national_id:e.target.value})}/></label><label>العنوان<input value={form.address||''} onChange={e=>setForm({...form,address:e.target.value})}/></label><label>النوع<select value={form.gender||''} onChange={e=>setForm({...form,gender:e.target.value})}><option value="">—</option><option>ذكر</option><option>أنثى</option></select></label><label>طريقة الوصول<input placeholder="ترشيح / إعلان / سوشيال ميديا" value={form.acquisition_source||''} onChange={e=>setForm({...form,acquisition_source:e.target.value})}/></label><label className="span2">ملاحظات<textarea value={form.notes||''} onChange={e=>setForm({...form,notes:e.target.value})}/></label><ModalActions close={()=>setModal('')} busy={busy}/></form>}
  {modal==='appointment'&&<form onSubmit={saveAppointment}><label className="span2">المريض<PatientAutocomplete patients={patients} selectedId={form.patient_id||''} allowNew onSelect={handlePatientSelect}/></label>{form.patient_id==='__new__'&&<label className="span2">اسم المريض الجديد<input required value={form.patient_name||''} onChange={e=>setForm({...form,patient_name:e.target.value})} placeholder="اسم المريض بالكامل"/></label>}<label>رقم الهاتف (اختياري)<input value={form.phone||''} onChange={e=>setForm({...form,phone:e.target.value})}/></label><label className='span2'>العنوان<input value={form.address||''} onChange={e=>setForm({...form,address:e.target.value})} placeholder='عنوان المريض'/></label><label>الدكتور (اختياري)<select value={form.doctor_id||''} onChange={e=>setForm({...form,doctor_id:e.target.value})}><option value="">غير محدد</option>{staff.filter(s=>s.role==='doctor').map(s=><option key={s.id} value={s.id}>{s.full_name}</option>)}</select></label><label>الخدمة<select value={form.service||'كشف'} onChange={e=>setForm({...form,service:e.target.value,service_mode:'paid',fee:allServices.find(x=>x.label===e.target.value)?.fee??0})}>{allServices.map((s,index)=><option key={s.id||`${s.kind}-${s.label}-${index}`} value={s.label}>{s.label}</option>)}<option value='__custom__'>＋ إضافة خدمة جديدة</option></select></label>{visibleCustomServices.length>0&&<div className="span2 white-card" style={{padding:12,marginTop:4}}><b style={{display:'block',marginBottom:8}}>الخدمات المضافة</b><div style={{display:'grid',gap:8}}>{visibleCustomServices.map((service:Row)=><div key={service.id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap',borderBottom:'1px solid #eee',paddingBottom:8}}><span>{service.name} · {money(service.fee)}</span>{isAdmin&&<button type="button" className="row-action delete-action" disabled={busy} onClick={()=>deleteCustomService(service)}>حذف الخدمة</button>}</div>)}</div>{!isAdmin&&<small className="muted">إدارة حذف الخدمات متاحة للمدير فقط.</small>}</div>}{form.service==='__custom__'&&<><label>اسم الخدمة الجديدة<input required value={form.custom_service_name||''} onChange={e=>setForm({...form,custom_service_name:e.target.value})}/></label><label>سعر الخدمة الجديدة<input required type='number' min='0' value={form.custom_service_fee??''} onChange={e=>setForm({...form,custom_service_fee:e.target.value})}/></label></>}{['ميزوسربي','بلازما'].includes(form.service)&&<label>نوع الخدمة<select value={form.service_mode||'paid'} onChange={e=>{const mode=e.target.value;const normalFee=allServices.find(x=>x.label===form.service)?.fee??(form.service==='ميزوسربي'?800:700);setForm({...form,service_mode:mode,fee:(mode==='free'||mode==='operation')?0:normalFee});}}><option value="paid">مدفوع</option><option value="operation">عملية (مجاني)</option><option value="free">مجاني</option></select></label>}<label>سعر الخدمة (جنيه)<input required type="number" min="0" disabled={['free','operation'].includes(form.service_mode||'')&&['ميزوسربي','بلازما'].includes(form.service)} value={['free','operation'].includes(form.service_mode||'')&&['ميزوسربي','بلازما'].includes(form.service)?0:(form.service==='__custom__'?(form.custom_service_fee??0):form.fee??allServices.find(x=>x.label===(form.service||'كشف'))?.fee??0)} onChange={e=>setForm({...form,fee:e.target.value})}/></label><label>العمر<input type="number" min="0" max="125" value={form.age||''} onChange={e=>setForm({...form,age:e.target.value})}/></label><label>طريقة الدفع<select value={form.payment_method||'cash'} onChange={e=>setForm({...form,payment_method:e.target.value})}>{Object.entries(paymentLabels).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></label><label>طريقة الوصول<input value={form.arrival_source||''} onChange={e=>setForm({...form,arrival_source:e.target.value})}/></label><label>التاريخ والوقت بالدقيقة<DateTimePicker required value={form.scheduled_at||asLocalInput()} onChange={v=>setForm({...form,scheduled_at:v})} label="موعد المريض"/></label><label>ملاحظات<textarea value={form.notes||''} onChange={e=>setForm({...form,notes:e.target.value})}/></label><ModalActions close={()=>setModal('')} busy={busy}/></form>}
- {modal==='operation'&&operationStep===1&&<form onSubmit={e=>{e.preventDefault();continueOperation();}}>
+ 
+ {modal==='operation'&&operationStep===1&&<form onSubmit={continueOperation}>
   <div className="span2 operation-step-indicator"><b className="active">1. بيانات الحجز والمريض</b><span>2. تفاصيل العملية</span></div>
   <label className="span2">اسم المريض<PatientAutocomplete patients={patients} selectedId={form.patient_id||''} allowNew onSelect={handlePatientSelect}/></label>
   {form.patient_id==='__new__'&&<label className="span2">اسم المريض الجديد<input required value={form.patient_name||''} onChange={e=>setForm({...form,patient_name:e.target.value})} placeholder="اسم المريض بالكامل"/></label>}
   <label>يوم ووقت العملية<DateTimePicker value={form.scheduled_at||''} onChange={v=>setForm({...form,scheduled_at:v})} label="يوم ووقت العملية"/></label>
   <label>المقدم<input type="number" min="0" required value={form.deposit_amount??'0'} onChange={e=>setForm({...form,deposit_amount:e.target.value})}/></label>
   <label>طريقة دفع المقدم<select value={form.deposit_payment_method||'cash'} onChange={e=>setForm({...form,deposit_payment_method:e.target.value})}>{Object.entries(paymentLabels).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></label>
-  <div className="span2 modal-actions"><button type="button" className="cancel" onClick={()=>setModal('')}>إلغاء</button><button type="submit" className="add-btn">التالي: تفاصيل العملية ←</button></div>
+  <div className="span2 modal-actions"><button type="button" className="cancel" onClick={()=>setModal('')}>إلغاء</button><button type="submit" className="add-btn" disabled={busy}>{busy?'جارٍ المتابعة…':'حفظ البيانات'}</button></div>
  </form>}
  {modal==='operation'&&operationStep===2&&<form onSubmit={saveOperation}>
   <div className="span2 operation-step-indicator"><span>1. بيانات الحجز والمريض</span><b className="active">2. تفاصيل العملية</b></div>
